@@ -1,6 +1,7 @@
 import logging
 from prompt_toolkit.enums import EditingMode
 from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.key_binding.vi_state import InputMode
 from prompt_toolkit.filters import (
     completion_is_selected,
     is_searching,
@@ -63,6 +64,8 @@ def pgcli_bindings(pgcli):
 
         event.current_buffer.complete_state = None
         event.app.current_buffer.complete_state = None
+        if pgcli.vi_mode:
+            event.app.vi_state.input_mode = InputMode.NAVIGATION
 
     @kb.add("c-space")
     def _(event):
