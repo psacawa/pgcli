@@ -20,6 +20,8 @@ import pendulum
 import datetime as dt
 import itertools
 import platform
+import importlib.util
+from glob import glob
 from time import time, sleep
 
 keyring = None  # keyring will be loaded later
@@ -852,8 +854,30 @@ class PGCli:
                 editing_mode=EditingMode.VI if self.vi_mode else EditingMode.EMACS,
                 search_ignore_case=True,
             )
+            self._configure_pt_app(prompt_app)
 
             return prompt_app
+
+    def _configure_pt_app(self, pt_app):
+        """Load and run users prompt_toolkit startup files"""
+        startup_files = glob(os.path.expanduser("~/.prompt_toolkit/*.py"))
+        startup_files = sorted(startup_files)
+        for file in startup_files:
+            try:
+                spec = importlib.util.spec_from_file_location("startup_file", file)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                addon = getattr(module, "main", None)
+                if callable(addon):
+                    addon(pt_app)
+                    self.logger.debug(f"Startup file {file} loaded")
+                else:
+                    self.logger.warning(
+                        f"Startup file {file} has no callable main routine"
+                    )
+            except Exception as e:
+                self.logger.debug(f"Failed to import startup file {file}")
+                self.logger.error("traceback: %r", traceback.format_exc())
 
     def _should_limit_output(self, sql, cur):
         """returns True if the output should be truncated, False otherwise."""
